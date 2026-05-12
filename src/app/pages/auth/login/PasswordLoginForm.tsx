@@ -38,6 +38,25 @@ import { FieldError } from '../FiledError';
 import { getResetPasswordPath } from '../../pathUtils';
 import { stopPropagation } from '../../../utils/keyboard';
 
+const HOMESERVER_URL_REG = /^https?:\/\//;
+
+const getHomeserverHost = (homeserver: string): string => {
+  const trimmedHomeserver = homeserver.trim();
+
+  if (!HOMESERVER_URL_REG.test(trimmedHomeserver)) {
+    return trimmedHomeserver;
+  }
+
+  try {
+    return new URL(trimmedHomeserver).host;
+  } catch {
+    return trimmedHomeserver;
+  }
+};
+
+const matchingHomeserver = (homeserver: string, mxIdServer: string): boolean =>
+  getHomeserverHost(homeserver).toLowerCase() === mxIdServer.toLowerCase();
+
 function UsernameHint({ server }: { server: string }) {
   const [anchor, setAnchor] = useState<RectCords>();
 
@@ -142,9 +161,12 @@ export function PasswordLoginForm({ defaultUsername, defaultEmail }: PasswordLog
     const mxIdUsername = getMxIdLocalPart(mxId);
     if (!mxIdServer || !mxIdUsername) return;
 
-    const getBaseUrl = factoryGetBaseUrl(clientConfig, mxIdServer);
+    const serverBaseUrl =
+      matchingHomeserver(server, mxIdServer) || matchingHomeserver(baseUrl, mxIdServer)
+        ? baseUrl
+        : factoryGetBaseUrl(clientConfig, mxIdServer);
 
-    startLogin(getBaseUrl, {
+    startLogin(serverBaseUrl, {
       type: 'm.login.password',
       identifier: {
         type: 'm.id.user',
