@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Text, Switch, Button, color, Spinner } from 'folds';
 import { IPusherRequest } from 'matrix-js-sdk';
 import { SequenceCard } from '../../../components/sequence-card';
@@ -85,15 +85,31 @@ function EmailNotification() {
 }
 
 export function SystemNotification() {
-  const notifPermission = usePermissionState('notifications', getNotificationState());
+  const browserNotifPermission = usePermissionState('notifications', getNotificationState());
+  const [notifPermission, setNotifPermission] = useState(browserNotifPermission);
   const [showNotifications, setShowNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [isNotificationSounds, setIsNotificationSounds] = useSetting(
     settingsAtom,
     'isNotificationSounds'
   );
 
+  useEffect(() => {
+    setNotifPermission(browserNotifPermission);
+  }, [browserNotifPermission]);
+
   const requestNotificationPermission = () => {
-    window.Notification.requestPermission();
+    if (!('Notification' in window)) {
+      setNotifPermission('denied');
+      return;
+    }
+
+    window.Notification.requestPermission()
+      .then((permission) => {
+        setNotifPermission(permission === 'default' ? 'prompt' : permission);
+      })
+      .catch(() => {
+        setNotifPermission(getNotificationState());
+      });
   };
 
   return (
